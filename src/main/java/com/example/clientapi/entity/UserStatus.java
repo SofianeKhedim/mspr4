@@ -1,9 +1,9 @@
 package com.example.clientapi.entity;
 
 /**
- * Énumération représentant le statut d'un client.
+ * Énumération représentant le statut d'un utilisateur.
  */
-public enum ClientStatus {
+public enum UserStatus {
     ACTIVE("Actif"),
     INACTIVE("Inactif"),
     SUSPENDED("Suspendu"),
@@ -11,7 +11,7 @@ public enum ClientStatus {
 
     private final String displayName;
 
-    ClientStatus(String displayName) {
+    UserStatus(String displayName) {
         this.displayName = displayName;
     }
 

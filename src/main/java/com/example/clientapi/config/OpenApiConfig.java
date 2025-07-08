@@ -29,9 +29,9 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("PayeTonKawa - Client API")
                         .version("1.0.0")
-                        .description("API REST pour la gestion des clients dans l'architecture microservices PayeTonKawa. " +
-                                "Cette API permet de gérer l'ensemble du cycle de vie des clients : création, consultation, " +
-                                "mise à jour, suppression et recherche avancée.")
+                        .description("API REST pour la gestion des utilisateurs dans l'architecture microservices PayeTonKawa. " +
+                                "Cette API permet de gérer l'ensemble du cycle de vie des utilisateurs : création, consultation, " +
+                                "mise à jour, suppression et recherche avancée. Supporte les rôles CLIENT et ADMIN.")
                         .contact(new Contact()
                                 .name("Équipe de développement PayeTonKawa")
                                 .email("dev@payetonkawa.com")

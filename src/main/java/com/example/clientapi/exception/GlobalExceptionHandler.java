@@ -17,10 +17,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Gestionnaire global des exceptions pour l'API Client.
- *
- * Cette classe capture toutes les exceptions levées par l'application
- * et les transforme en réponses HTTP standardisées.
+ * Gestionnaire global des exceptions pour l'API User.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -28,17 +25,17 @@ public class GlobalExceptionHandler {
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /**
-     * Gestion de l'exception ClientNotFoundException.
+     * Gestion de l'exception UserNotFoundException.
      */
-    @ExceptionHandler(ClientNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleClientNotFoundException(
-            ClientNotFoundException ex, HttpServletRequest request) {
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleUserNotFoundException(
+            UserNotFoundException ex, HttpServletRequest request) {
 
-        logger.warn("Client non trouvé: {}", ex.getMessage());
+        logger.warn("Utilisateur non trouvé: {}", ex.getMessage());
 
         ErrorResponse errorResponse = new ErrorResponse(
                 HttpStatus.NOT_FOUND.value(),
-                "Client Not Found",
+                "User Not Found",
                 ex.getMessage(),
                 request.getRequestURI()
         );

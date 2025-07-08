@@ -1,5 +1,4 @@
 package com.example.clientapi.entity;
-
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -11,18 +10,16 @@ import java.time.LocalDateTime;
 import java.util.Objects;
 
 /**
- * Entité représentant un client dans le système PayeTonKawa.
- *
- * Cette entité correspond à la table 'clients' en base de données et contient
- * toutes les informations nécessaires pour gérer les clients de l'entreprise.
+ * Entité représentant un utilisateur dans le système PayeTonKawa.
+ * Peut être soit un client soit un administrateur selon son rôle.
  */
 @Entity
-@Table(name = "clients", indexes = {
-        @Index(name = "idx_client_email", columnList = "email"),
-        @Index(name = "idx_client_status", columnList = "status"),
-        @Index(name = "idx_client_type", columnList = "type")
+@Table(name = "users", indexes = {
+        @Index(name = "idx_user_email", columnList = "email"),
+        @Index(name = "idx_user_status", columnList = "status"),
+        @Index(name = "idx_user_role", columnList = "role")
 })
-public class Client {
+public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -66,11 +63,16 @@ public class Client {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private ClientStatus status = ClientStatus.ACTIVE;
+    private UserStatus status = UserStatus.ACTIVE;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "type", nullable = false)
-    private ClientType type = ClientType.INDIVIDUAL;
+    @Column(name = "role", nullable = false)
+    private UserRole role = UserRole.CLIENT;
+
+    // Champ spécifique aux clients professionnels
+    @Column(name = "company_name", length = 100)
+    @Size(max = 100, message = "Le nom de l'entreprise ne peut pas dépasser 100 caractères")
+    private String companyName;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -81,12 +83,13 @@ public class Client {
     private LocalDateTime updatedAt;
 
     // Constructeurs
-    public Client() {}
+    public User() {}
 
-    public Client(String firstName, String lastName, String email) {
+    public User(String firstName, String lastName, String email, UserRole role) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
+        this.role = role;
     }
 
     // Getters et Setters
@@ -117,11 +120,14 @@ public class Client {
     public String getCountry() { return country; }
     public void setCountry(String country) { this.country = country; }
 
-    public ClientStatus getStatus() { return status; }
-    public void setStatus(ClientStatus status) { this.status = status; }
+    public UserStatus getStatus() { return status; }
+    public void setStatus(UserStatus status) { this.status = status; }
 
-    public ClientType getType() { return type; }
-    public void setType(ClientType type) { this.type = type; }
+    public UserRole getRole() { return role; }
+    public void setRole(UserRole role) { this.role = role; }
+
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
@@ -134,12 +140,20 @@ public class Client {
         return firstName + " " + lastName;
     }
 
+    public boolean isClient() {
+        return role == UserRole.CLIENT;
+    }
+
+    public boolean isAdmin() {
+        return role == UserRole.ADMIN;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Client client = (Client) o;
-        return Objects.equals(id, client.id) && Objects.equals(email, client.email);
+        User user = (User) o;
+        return Objects.equals(id, user.id) && Objects.equals(email, user.email);
     }
 
     @Override
@@ -149,13 +163,13 @@ public class Client {
 
     @Override
     public String toString() {
-        return "Client{" +
+        return "User{" +
                 "id=" + id +
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
                 ", email='" + email + '\'' +
+                ", role=" + role +
                 ", status=" + status +
-                ", type=" + type +
                 '}';
     }
 }

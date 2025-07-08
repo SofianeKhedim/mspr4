@@ -1,27 +1,21 @@
 package com.example.clientapi.dto;
 
-import com.example.clientapi.entity.ClientType;
+import com.example.clientapi.entity.UserStatus;
+import com.example.clientapi.entity.UserRole;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * DTO pour la création d'un nouveau client.
- *
- * Contient uniquement les champs nécessaires à la création,
- * sans ID ni timestamps.
+ * DTO pour la mise à jour d'un utilisateur existant.
  */
-public class CreateClientDto {
+public class UpdateUserDto {
 
-    @NotBlank(message = "Le prénom est obligatoire")
     @Size(max = 50, message = "Le prénom ne peut pas dépasser 50 caractères")
     private String firstName;
 
-    @NotBlank(message = "Le nom est obligatoire")
     @Size(max = 50, message = "Le nom ne peut pas dépasser 50 caractères")
     private String lastName;
 
-    @NotBlank(message = "L'email est obligatoire")
     @Email(message = "L'email doit être valide")
     @Size(max = 100, message = "L'email ne peut pas dépasser 100 caractères")
     private String email;
@@ -41,10 +35,14 @@ public class CreateClientDto {
     @Size(max = 50, message = "Le pays ne peut pas dépasser 50 caractères")
     private String country;
 
-    private ClientType type = ClientType.INDIVIDUAL;
+    private UserStatus status;
+    private UserRole role;
+
+    @Size(max = 100, message = "Le nom de l'entreprise ne peut pas dépasser 100 caractères")
+    private String companyName;
 
     // Constructeurs
-    public CreateClientDto() {}
+    public UpdateUserDto() {}
 
     // Getters et Setters
     public String getFirstName() { return firstName; }
@@ -71,6 +69,12 @@ public class CreateClientDto {
     public String getCountry() { return country; }
     public void setCountry(String country) { this.country = country; }
 
-    public ClientType getType() { return type; }
-    public void setType(ClientType type) { this.type = type; }
+    public UserStatus getStatus() { return status; }
+    public void setStatus(UserStatus status) { this.status = status; }
+
+    public UserRole getRole() { return role; }
+    public void setRole(UserRole role) { this.role = role; }
+
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
 }

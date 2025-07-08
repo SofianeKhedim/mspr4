@@ -1,18 +1,15 @@
 package com.example.clientapi.dto;
 
-import com.example.clientapi.entity.ClientStatus;
-import com.example.clientapi.entity.ClientType;
+import com.example.clientapi.entity.UserStatus;
+import com.example.clientapi.entity.UserRole;
 import com.fasterxml.jackson.annotation.JsonFormat;
 
 import java.time.LocalDateTime;
 
 /**
- * DTO pour représenter un client dans les réponses API.
- *
- * Utilisé pour exposer les données du client sans révéler
- * la structure interne de l'entité.
+ * DTO pour représenter un utilisateur dans les réponses API.
  */
-public class ClientDto {
+public class UserDto {
     private Long id;
     private String firstName;
     private String lastName;
@@ -22,8 +19,9 @@ public class ClientDto {
     private String city;
     private String postalCode;
     private String country;
-    private ClientStatus status;
-    private ClientType type;
+    private UserStatus status;
+    private UserRole role;
+    private String companyName;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
@@ -32,7 +30,7 @@ public class ClientDto {
     private LocalDateTime updatedAt;
 
     // Constructeurs
-    public ClientDto() {}
+    public UserDto() {}
 
     // Getters et Setters
     public Long getId() { return id; }
@@ -62,11 +60,14 @@ public class ClientDto {
     public String getCountry() { return country; }
     public void setCountry(String country) { this.country = country; }
 
-    public ClientStatus getStatus() { return status; }
-    public void setStatus(ClientStatus status) { this.status = status; }
+    public UserStatus getStatus() { return status; }
+    public void setStatus(UserStatus status) { this.status = status; }
 
-    public ClientType getType() { return type; }
-    public void setType(ClientType type) { this.type = type; }
+    public UserRole getRole() { return role; }
+    public void setRole(UserRole role) { this.role = role; }
+
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
@@ -74,10 +75,16 @@ public class ClientDto {
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    // Méthode utilitaire
+    // Méthodes utilitaires
     public String getFullName() {
         return firstName + " " + lastName;
     }
+
+    public boolean isClient() {
+        return role == UserRole.CLIENT;
+    }
+
+    public boolean isAdmin() {
+        return role == UserRole.ADMIN;
+    }
 }
-
-
