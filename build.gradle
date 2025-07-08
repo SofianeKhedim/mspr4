@@ -1,0 +1,225 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.3.5'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'jacoco'
+}
+
+// Project metadata
+group = 'com.example'
+version = '0.0.1-SNAPSHOT'
+description = 'Client API microservice for PayeTonKawa coffee distribution platform'
+
+// Java configuration
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
+
+// Gradle configurations
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+// External dependency versions
+ext {
+    springdocVersion = '2.3.0'
+    testcontainersVersion = '1.19.3'
+    commonsLangVersion = '3.14.0'
+}
+
+dependencies {
+    // Core Spring Boot starters for REST API functionality
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // Security framework for API authentication and authorization
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // Production monitoring and health checks
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // Database drivers - H2 for development, PostgreSQL for production
+    runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // Development tools for hot reload and productivity
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+//    developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
+
+    // API documentation generation with OpenAPI 3.0 specification
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
+
+    // Utility libraries for common operations
+    implementation "org.apache.commons:commons-lang3:${commonsLangVersion}"
+
+    // JSON serialization/deserialization with Java 8 time support
+    implementation 'com.fasterxml.jackson.core:jackson-databind'
+    implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+    // Configuration metadata generation for IDE support
+    annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
+
+    // Testing framework with Spring Boot test slices
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // Integration testing with real database containers
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+
+    // HTTP client mocking for external API testing
+    testImplementation 'com.squareup.okhttp3:mockwebserver'
+}
+
+// Testcontainers BOM for version alignment
+dependencyManagement {
+    imports {
+        mavenBom "org.testcontainers:testcontainers-bom:${testcontainersVersion}"
+    }
+}
+
+// Test execution configuration
+tasks.named('test') {
+    useJUnitPlatform()
+
+    // Set test environment profile
+    systemProperty 'spring.profiles.active', 'test'
+
+    // JVM optimization for test execution
+    maxHeapSize = "1g"
+    jvmArgs '-XX:+UseG1GC'
+
+    // Generate coverage report after test execution
+    finalizedBy jacocoTestReport
+
+    // Configure test output logging
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat = "short"
+        showStandardStreams = false
+    }
+}
+
+// Code coverage report generation
+jacocoTestReport {
+    dependsOn test
+
+    reports {
+        xml.required = true    // Required for CI/CD integration
+        html.required = true   // Human-readable report
+        csv.required = false   // Not needed for this project
+    }
+
+    // Exclude classes from coverage calculation
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                    '**/ClientApiApplication.class',  // Main application class
+                    '**/config/**',                   // Configuration classes
+                    '**/dto/**',                     // Data transfer objects
+                    '**/entity/**',                  // JPA entities
+                    '**/exception/**'                // Custom exception classes
+            ])
+        }))
+    }
+}
+
+// Code coverage threshold enforcement as per project requirements (95%)
+jacocoTestCoverageVerification {
+    dependsOn jacocoTestReport
+
+    violationRules {
+        rule {
+            limit {
+                counter = 'INSTRUCTION'
+                value = 'COVEREDRATIO'
+                minimum = 0.95  // 95% instruction coverage requirement
+            }
+        }
+        rule {
+            limit {
+                counter = 'BRANCH'
+                value = 'COVEREDRATIO'
+                minimum = 0.90  // 90% branch coverage for conditional logic
+            }
+        }
+    }
+}
+
+// Integrate coverage verification into build pipeline
+check.dependsOn jacocoTestCoverageVerification
+
+// Java compilation configuration
+compileJava {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-parameters']  // Preserve parameter names for reflection
+}
+
+compileTestJava {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-parameters']
+}
+
+// Custom task: Run application with development profile (H2 database)
+task runDev(type: org.springframework.boot.gradle.tasks.run.BootRun) {
+    group = 'application'
+    description = 'Run application with development profile using H2 database'
+    systemProperty 'spring.profiles.active', 'dev'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.clientapi.ClientApiApplication'
+}
+
+// Custom task: Run application with production profile (PostgreSQL database)
+task runProd(type: org.springframework.boot.gradle.tasks.run.BootRun) {
+    group = 'application'
+    description = 'Run application with production profile using PostgreSQL database'
+    systemProperty 'spring.profiles.active', 'prod'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.clientapi.ClientApiApplication'
+}
+
+// Custom task: Complete clean build with quality checks
+task cleanBuild {
+    group = 'build'
+    description = 'Execute complete clean build with tests and coverage verification'
+    dependsOn clean, build
+}
+
+// JAR packaging configuration
+jar {
+    enabled = false
+    archiveClassifier = ''
+}
+
+// Executable JAR configuration for deployment
+bootJar {
+    enabled = true
+    archiveClassifier = ''
+    mainClass = 'com.payetonkawa.clientapi.ClientApiApplication'
+
+    // Include build information in JAR manifest
+    manifest {
+        attributes(
+                'Implementation-Title': project.name,
+                'Implementation-Version': project.version,
+                'Implementation-Vendor': 'PayeTonKawa'
+        )
+    }
+}
+
+// Compiler warning configuration for code quality
+gradle.projectsEvaluated {
+    tasks.withType(JavaCompile) {
+        options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"
+    }
+}
