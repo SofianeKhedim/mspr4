@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 
 /**
- * DTO pour la mise à jour d'un utilisateur existant.
+ * DTO pour la mise à jour d'un utilisateur existant (avec mot de passe optionnel).
  */
 public class UpdateUserDto {
 
@@ -19,6 +19,9 @@ public class UpdateUserDto {
     @Email(message = "L'email doit être valide")
     @Size(max = 100, message = "L'email ne peut pas dépasser 100 caractères")
     private String email;
+
+    @Size(min = 6, max = 100, message = "Le mot de passe doit contenir entre 6 et 100 caractères")
+    private String password;
 
     @Size(max = 20, message = "Le téléphone ne peut pas dépasser 20 caractères")
     private String phone;
@@ -53,6 +56,9 @@ public class UpdateUserDto {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
 
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }

@@ -9,7 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 /**
- * Interface du service de gestion des utilisateurs.
+ * Interface du service de gestion des utilisateurs avec sécurité.
  */
 public interface UserService {
 
@@ -102,4 +102,9 @@ public interface UserService {
      * Compte le nombre d'utilisateurs par rôle.
      */
     long countUsersByRole(UserRole role);
+
+    /**
+     * Vérifie si l'utilisateur connecté est propriétaire de l'ID donné.
+     */
+    boolean isOwner(Long userId, String authenticatedEmail);
 }

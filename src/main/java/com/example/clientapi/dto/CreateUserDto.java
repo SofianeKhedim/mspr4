@@ -1,4 +1,5 @@
 package com.example.clientapi.dto;
+
 import com.example.clientapi.entity.UserRole;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -6,7 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
- * DTO pour la création d'un nouvel utilisateur.
+ * DTO pour la création d'un nouvel utilisateur (avec mot de passe).
  */
 public class CreateUserDto {
 
@@ -22,6 +23,10 @@ public class CreateUserDto {
     @Email(message = "L'email doit être valide")
     @Size(max = 100, message = "L'email ne peut pas dépasser 100 caractères")
     private String email;
+
+    @NotBlank(message = "Le mot de passe est obligatoire")
+    @Size(min = 6, max = 100, message = "Le mot de passe doit contenir entre 6 et 100 caractères")
+    private String password;
 
     @Size(max = 20, message = "Le téléphone ne peut pas dépasser 20 caractères")
     private String phone;
@@ -39,7 +44,7 @@ public class CreateUserDto {
     private String country;
 
     @NotNull(message = "Le rôle est obligatoire")
-    private UserRole role = UserRole.CLIENT;
+    private UserRole role;
 
     @Size(max = 100, message = "Le nom de l'entreprise ne peut pas dépasser 100 caractères")
     private String companyName;
@@ -56,6 +61,9 @@ public class CreateUserDto {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
 
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }

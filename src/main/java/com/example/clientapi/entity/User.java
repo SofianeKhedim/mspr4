@@ -1,17 +1,22 @@
 package com.example.clientapi.entity;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 
 /**
- * Entité représentant un utilisateur dans le système PayeTonKawa.
- * Peut être soit un client soit un administrateur selon son rôle.
+ * Entité représentant un utilisateur avec authentification.
  */
 @Entity
 @Table(name = "users", indexes = {
@@ -19,7 +24,7 @@ import java.util.Objects;
         @Index(name = "idx_user_status", columnList = "status"),
         @Index(name = "idx_user_role", columnList = "role")
 })
-public class User {
+public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,6 +45,10 @@ public class User {
     @Email(message = "L'email doit être valide")
     @Size(max = 100, message = "L'email ne peut pas dépasser 100 caractères")
     private String email;
+
+    @Column(name = "password", nullable = false)
+    @NotBlank(message = "Le mot de passe est obligatoire")
+    private String password;
 
     @Column(name = "phone", length = 20)
     @Size(max = 20, message = "Le téléphone ne peut pas dépasser 20 caractères")
@@ -69,7 +78,6 @@ public class User {
     @Column(name = "role", nullable = false)
     private UserRole role = UserRole.CLIENT;
 
-    // Champ spécifique aux clients professionnels
     @Column(name = "company_name", length = 100)
     @Size(max = 100, message = "Le nom de l'entreprise ne peut pas dépasser 100 caractères")
     private String companyName;
@@ -85,11 +93,48 @@ public class User {
     // Constructeurs
     public User() {}
 
-    public User(String firstName, String lastName, String email, UserRole role) {
+    public User(String firstName, String lastName, String email, String password, UserRole role) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
+        this.password = password;
         this.role = role;
+    }
+
+    // Implémentation UserDetails pour Spring Security
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+    }
+
+    @Override
+    public String getPassword() {
+        return password;
+    }
+
+    @Override
+    public String getUsername() {
+        return email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return status != UserStatus.SUSPENDED;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return status == UserStatus.ACTIVE;
     }
 
     // Getters et Setters
@@ -104,6 +149,8 @@ public class User {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public void setPassword(String password) { this.password = password; }
 
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }

@@ -33,6 +33,7 @@ ext {
     springdocVersion = '2.3.0'
     testcontainersVersion = '1.19.3'
     commonsLangVersion = '3.14.0'
+    jjwtVersion = '0.12.3'
 }
 
 dependencies {
@@ -43,6 +44,14 @@ dependencies {
 
     // Security framework for API authentication and authorization
     implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // JWT
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.3'
+    implementation 'io.jsonwebtoken:jjwt-impl:0.12.3'
+    implementation 'io.jsonwebtoken:jjwt-jackson:0.12.3'
+
+    // Validation des mots de passe
+    implementation 'org.springframework.security:spring-security-crypto'
 
     // Production monitoring and health checks
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
@@ -91,18 +100,11 @@ dependencyManagement {
 // Test execution configuration
 tasks.named('test') {
     useJUnitPlatform()
-
-    // Set test environment profile
     systemProperty 'spring.profiles.active', 'test'
-
-    // JVM optimization for test execution
     maxHeapSize = "1g"
     jvmArgs '-XX:+UseG1GC'
-
-    // Generate coverage report after test execution
     finalizedBy jacocoTestReport
 
-    // Configure test output logging
     testLogging {
         events "passed", "skipped", "failed"
         exceptionFormat = "short"
@@ -113,22 +115,21 @@ tasks.named('test') {
 // Code coverage report generation
 jacocoTestReport {
     dependsOn test
-
     reports {
-        xml.required = true    // Required for CI/CD integration
-        html.required = true   // Human-readable report
-        csv.required = false   // Not needed for this project
+        xml.required = true
+        html.required = true
+        csv.required = false
     }
 
-    // Exclude classes from coverage calculation
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
             fileTree(dir: it, exclude: [
-                    '**/ClientApiApplication.class',  // Main application class
-                    '**/config/**',                   // Configuration classes
-                    '**/dto/**',                     // Data transfer objects
-                    '**/entity/**',                  // JPA entities
-                    '**/exception/**'                // Custom exception classes
+                    '**/UserApiApplication.class',
+                    '**/config/**',
+                    '**/dto/**',
+                    '**/entity/**',
+                    '**/exception/**',
+                    '**/security/AuthEntryPointJwt.class'
             ])
         }))
     }
@@ -137,32 +138,29 @@ jacocoTestReport {
 // Code coverage threshold enforcement as per project requirements (95%)
 jacocoTestCoverageVerification {
     dependsOn jacocoTestReport
-
     violationRules {
         rule {
             limit {
                 counter = 'INSTRUCTION'
                 value = 'COVEREDRATIO'
-                minimum = 0.95  // 95% instruction coverage requirement
+                minimum = 0.95
             }
         }
         rule {
             limit {
                 counter = 'BRANCH'
                 value = 'COVEREDRATIO'
-                minimum = 0.90  // 90% branch coverage for conditional logic
+                minimum = 0.90
             }
         }
     }
 }
-
-// Integrate coverage verification into build pipeline
 check.dependsOn jacocoTestCoverageVerification
 
-// Java compilation configuration
+// Compilation configuration
 compileJava {
     options.encoding = 'UTF-8'
-    options.compilerArgs += ['-parameters']  // Preserve parameter names for reflection
+    options.compilerArgs += ['-parameters']
 }
 
 compileTestJava {
@@ -170,44 +168,40 @@ compileTestJava {
     options.compilerArgs += ['-parameters']
 }
 
-// Custom task: Run application with development profile (H2 database)
+// Custom tasks
 task runDev(type: org.springframework.boot.gradle.tasks.run.BootRun) {
     group = 'application'
     description = 'Run application with development profile using H2 database'
     systemProperty 'spring.profiles.active', 'dev'
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'com.example.clientapi.ClientApiApplication'
+    mainClass = 'com.example.clientapi.UserApiApplication'
 }
 
-// Custom task: Run application with production profile (PostgreSQL database)
 task runProd(type: org.springframework.boot.gradle.tasks.run.BootRun) {
     group = 'application'
     description = 'Run application with production profile using PostgreSQL database'
     systemProperty 'spring.profiles.active', 'prod'
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'com.example.clientapi.ClientApiApplication'
+    mainClass = 'com.example.clientapi.UserApiApplication'
 }
 
-// Custom task: Complete clean build with quality checks
 task cleanBuild {
     group = 'build'
     description = 'Execute complete clean build with tests and coverage verification'
     dependsOn clean, build
 }
 
-// JAR packaging configuration
+// JAR configuration
 jar {
     enabled = false
     archiveClassifier = ''
 }
 
-// Executable JAR configuration for deployment
 bootJar {
     enabled = true
     archiveClassifier = ''
-    mainClass = 'com.payetonkawa.clientapi.ClientApiApplication'
+    mainClass = 'com.example.clientapi.UserApiApplication'
 
-    // Include build information in JAR manifest
     manifest {
         attributes(
                 'Implementation-Title': project.name,
@@ -217,7 +211,7 @@ bootJar {
     }
 }
 
-// Compiler warning configuration for code quality
+// Compiler warnings
 gradle.projectsEvaluated {
     tasks.withType(JavaCompile) {
         options.compilerArgs << "-Xlint:unchecked" << "-Xlint:deprecation"

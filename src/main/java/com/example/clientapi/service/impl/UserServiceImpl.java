@@ -1,4 +1,3 @@
-// 9. UserServiceImpl (implémentation du service)
 package com.example.clientapi.service.impl;
 
 import com.example.clientapi.dto.UserDto;
@@ -16,11 +15,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Implémentation du service de gestion des utilisateurs.
+ * Implémentation du service de gestion des utilisateurs avec sécurité.
  */
 @Service
 @Transactional
@@ -29,10 +29,12 @@ public class UserServiceImpl implements UserService {
     private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
-    public UserServiceImpl(UserRepository userRepository) {
+    public UserServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -56,7 +58,7 @@ public class UserServiceImpl implements UserService {
         logger.info("Utilisateur créé avec succès. ID: {}, Email: {}, Rôle: {}",
                 savedUser.getId(), savedUser.getEmail(), savedUser.getRole());
 
-        // Conversion entité vers DTO de réponse
+        // Conversion entité vers DTO de réponse (sans mot de passe)
         return convertEntityToDto(savedUser);
     }
 
@@ -270,6 +272,17 @@ public class UserServiceImpl implements UserService {
         return userRepository.countByRole(role);
     }
 
+    /**
+     * Vérifie si l'utilisateur connecté est propriétaire de l'ID donné.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isOwner(Long userId, String authenticatedEmail) {
+        return userRepository.findById(userId)
+                .map(user -> user.getEmail().equals(authenticatedEmail))
+                .orElse(false);
+    }
+
     // Méthodes utilitaires de conversion
 
     private User convertCreateDtoToEntity(CreateUserDto dto) {
@@ -277,6 +290,12 @@ public class UserServiceImpl implements UserService {
         user.setFirstName(dto.getFirstName());
         user.setLastName(dto.getLastName());
         user.setEmail(dto.getEmail());
+
+        // Encoder le mot de passe
+        if (dto.getPassword() != null) {
+            user.setPassword(passwordEncoder.encode(dto.getPassword()));
+        }
+
         user.setPhone(dto.getPhone());
         user.setAddress(dto.getAddress());
         user.setCity(dto.getCity());
@@ -297,6 +316,9 @@ public class UserServiceImpl implements UserService {
         }
         if (dto.getEmail() != null) {
             user.setEmail(dto.getEmail());
+        }
+        if (dto.getPassword() != null) {
+            user.setPassword(passwordEncoder.encode(dto.getPassword()));
         }
         if (dto.getPhone() != null) {
             user.setPhone(dto.getPhone());
@@ -330,6 +352,7 @@ public class UserServiceImpl implements UserService {
         dto.setFirstName(user.getFirstName());
         dto.setLastName(user.getLastName());
         dto.setEmail(user.getEmail());
+        // Ne pas exposer le mot de passe dans le DTO
         dto.setPhone(user.getPhone());
         dto.setAddress(user.getAddress());
         dto.setCity(user.getCity());

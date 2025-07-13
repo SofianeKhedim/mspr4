@@ -20,13 +20,16 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Contrôleur REST pour la gestion des utilisateurs.
+ * Contrôleur REST pour la gestion des utilisateurs avec restrictions de rôles.
  */
 @RestController
 @RequestMapping("/api/v1/users")
@@ -43,14 +46,16 @@ public class UserController {
     }
 
     /**
-     * Crée un nouvel utilisateur.
+     * Crée un nouvel utilisateur (admin uniquement).
      */
     @PostMapping
-    @Operation(summary = "Créer un nouvel utilisateur", description = "Crée un nouvel utilisateur (client ou admin)")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Créer un nouvel utilisateur", description = "Crée un nouvel utilisateur (réservé aux admins)")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Utilisateur créé avec succès"),
             @ApiResponse(responseCode = "400", description = "Données invalides"),
-            @ApiResponse(responseCode = "409", description = "Email déjà existant")
+            @ApiResponse(responseCode = "409", description = "Email déjà existant"),
+            @ApiResponse(responseCode = "403", description = "Accès refusé")
     })
     public ResponseEntity<UserDto> createUser(@Valid @RequestBody CreateUserDto createUserDto) {
         logger.info("Requête de création d'un utilisateur reçue pour l'email: {} avec le rôle: {}",
@@ -63,14 +68,11 @@ public class UserController {
     }
 
     /**
-     * Récupère un utilisateur par son ID.
+     * Récupère un utilisateur par son ID (le user lui-même ou admin).
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @userService.isOwner(#id, authentication.name)")
     @Operation(summary = "Récupérer un utilisateur par ID")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Utilisateur trouvé"),
-            @ApiResponse(responseCode = "404", description = "Utilisateur non trouvé")
-    })
     public ResponseEntity<UserDto> getUserById(@Parameter(description = "ID de l'utilisateur") @PathVariable Long id) {
         logger.debug("Requête de récupération de l'utilisateur avec l'ID: {}", id);
 
@@ -79,14 +81,11 @@ public class UserController {
     }
 
     /**
-     * Récupère un utilisateur par son email.
+     * Récupère un utilisateur par son email (le user lui-même ou admin).
      */
     @GetMapping("/email/{email}")
+    @PreAuthorize("hasRole('ADMIN') or #email == authentication.name")
     @Operation(summary = "Récupérer un utilisateur par email")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Utilisateur trouvé"),
-            @ApiResponse(responseCode = "404", description = "Utilisateur non trouvé")
-    })
     public ResponseEntity<UserDto> getUserByEmail(@Parameter(description = "Email de l'utilisateur") @PathVariable String email) {
         logger.debug("Requête de récupération de l'utilisateur avec l'email: {}", email);
 
@@ -95,13 +94,11 @@ public class UserController {
     }
 
     /**
-     * Récupère tous les utilisateurs avec pagination.
+     * Récupère tous les utilisateurs (admin uniquement).
      */
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Lister tous les utilisateurs")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Liste des utilisateurs récupérée")
-    })
     public ResponseEntity<Page<UserDto>> getAllUsers(@PageableDefault(size = 20, sort = "lastName") Pageable pageable) {
         logger.debug("Requête de récupération de tous les utilisateurs. Page: {}, Taille: {}",
                 pageable.getPageNumber(), pageable.getPageSize());
@@ -111,10 +108,11 @@ public class UserController {
     }
 
     /**
-     * Récupère uniquement les clients.
+     * Récupère uniquement les clients (admin uniquement).
      */
     @GetMapping("/clients")
-    @Operation(summary = "Lister tous les clients", description = "Récupère uniquement les utilisateurs avec le rôle CLIENT")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Lister tous les clients")
     public ResponseEntity<Page<UserDto>> getAllClients(@PageableDefault(size = 20, sort = "lastName") Pageable pageable) {
         logger.debug("Requête de récupération de tous les clients");
 
@@ -123,10 +121,11 @@ public class UserController {
     }
 
     /**
-     * Récupère uniquement les administrateurs.
+     * Récupère uniquement les administrateurs (admin uniquement).
      */
     @GetMapping("/admins")
-    @Operation(summary = "Lister tous les administrateurs", description = "Récupère uniquement les utilisateurs avec le rôle ADMIN")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Lister tous les administrateurs")
     public ResponseEntity<Page<UserDto>> getAllAdmins(@PageableDefault(size = 20, sort = "lastName") Pageable pageable) {
         logger.debug("Requête de récupération de tous les administrateurs");
 
@@ -135,21 +134,26 @@ public class UserController {
     }
 
     /**
-     * Met à jour un utilisateur existant.
+     * Met à jour un utilisateur (le user lui-même ou admin).
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @userService.isOwner(#id, authentication.name)")
     @Operation(summary = "Mettre à jour un utilisateur")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Utilisateur mis à jour avec succès"),
-            @ApiResponse(responseCode = "400", description = "Données invalides"),
-            @ApiResponse(responseCode = "404", description = "Utilisateur non trouvé"),
-            @ApiResponse(responseCode = "409", description = "Email déjà existant")
-    })
     public ResponseEntity<UserDto> updateUser(
             @Parameter(description = "ID de l'utilisateur") @PathVariable Long id,
             @Valid @RequestBody UpdateUserDto updateUserDto) {
 
         logger.info("Requête de mise à jour de l'utilisateur avec l'ID: {}", id);
+
+        // Restriction : seuls les admins peuvent changer le rôle
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(grantedAuthority -> grantedAuthority.getAuthority().equals("ROLE_ADMIN"));
+
+        if (updateUserDto.getRole() != null && !isAdmin) {
+            updateUserDto.setRole(null); // Ignorer la modification de rôle si pas admin
+            logger.warn("Tentative de modification de rôle par un non-admin refusée pour l'utilisateur ID: {}", id);
+        }
 
         UserDto updatedUser = userService.updateUser(id, updateUserDto);
 
@@ -158,14 +162,11 @@ public class UserController {
     }
 
     /**
-     * Supprime un utilisateur.
+     * Supprime un utilisateur (admin uniquement).
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Supprimer un utilisateur")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "204", description = "Utilisateur supprimé avec succès"),
-            @ApiResponse(responseCode = "404", description = "Utilisateur non trouvé")
-    })
     public ResponseEntity<Void> deleteUser(@Parameter(description = "ID de l'utilisateur") @PathVariable Long id) {
         logger.info("Requête de suppression de l'utilisateur avec l'ID: {}", id);
 
@@ -176,9 +177,10 @@ public class UserController {
     }
 
     /**
-     * Recherche les utilisateurs par statut.
+     * Recherche les utilisateurs par statut (admin uniquement).
      */
     @GetMapping("/status/{status}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Lister les utilisateurs par statut")
     public ResponseEntity<Page<UserDto>> getUsersByStatus(
             @Parameter(description = "Statut de l'utilisateur") @PathVariable UserStatus status,
@@ -191,9 +193,10 @@ public class UserController {
     }
 
     /**
-     * Recherche les utilisateurs par rôle.
+     * Recherche les utilisateurs par rôle (admin uniquement).
      */
     @GetMapping("/role/{role}")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Lister les utilisateurs par rôle")
     public ResponseEntity<Page<UserDto>> getUsersByRole(
             @Parameter(description = "Rôle de l'utilisateur") @PathVariable UserRole role,
@@ -206,10 +209,11 @@ public class UserController {
     }
 
     /**
-     * Recherche globale dans les utilisateurs.
+     * Recherche globale dans les utilisateurs (admin uniquement).
      */
     @GetMapping("/search")
-    @Operation(summary = "Rechercher des utilisateurs", description = "Recherche globale dans nom, prénom, email et nom d'entreprise")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Rechercher des utilisateurs")
     public ResponseEntity<Page<UserDto>> searchUsers(
             @Parameter(description = "Terme de recherche") @RequestParam String q,
             @PageableDefault(size = 20, sort = "lastName") Pageable pageable) {
@@ -221,10 +225,11 @@ public class UserController {
     }
 
     /**
-     * Active un utilisateur.
+     * Active un utilisateur (admin uniquement).
      */
     @PatchMapping("/{id}/activate")
-    @Operation(summary = "Activer un utilisateur", description = "Change le statut d'un utilisateur en ACTIVE")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Activer un utilisateur")
     public ResponseEntity<UserDto> activateUser(@Parameter(description = "ID de l'utilisateur") @PathVariable Long id) {
         logger.info("Requête d'activation de l'utilisateur avec l'ID: {}", id);
 
@@ -235,10 +240,11 @@ public class UserController {
     }
 
     /**
-     * Désactive un utilisateur.
+     * Désactive un utilisateur (admin uniquement).
      */
     @PatchMapping("/{id}/deactivate")
-    @Operation(summary = "Désactiver un utilisateur", description = "Change le statut d'un utilisateur en INACTIVE")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Désactiver un utilisateur")
     public ResponseEntity<UserDto> deactivateUser(@Parameter(description = "ID de l'utilisateur") @PathVariable Long id) {
         logger.info("Requête de désactivation de l'utilisateur avec l'ID: {}", id);
 
@@ -249,10 +255,11 @@ public class UserController {
     }
 
     /**
-     * Change le rôle d'un utilisateur.
+     * Change le rôle d'un utilisateur (admin uniquement).
      */
     @PatchMapping("/{id}/role/{role}")
-    @Operation(summary = "Changer le rôle d'un utilisateur", description = "Modifie le rôle d'un utilisateur")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Changer le rôle d'un utilisateur")
     public ResponseEntity<UserDto> changeUserRole(
             @Parameter(description = "ID de l'utilisateur") @PathVariable Long id,
             @Parameter(description = "Nouveau rôle") @PathVariable UserRole role) {
@@ -266,38 +273,20 @@ public class UserController {
     }
 
     /**
-     * Vérifie si un email existe.
-     */
-    @GetMapping("/email/{email}/exists")
-    @Operation(summary = "Vérifier l'existence d'un email")
-    public ResponseEntity<Map<String, Boolean>> checkEmailExists(@Parameter(description = "Email à vérifier") @PathVariable String email) {
-        logger.debug("Vérification de l'existence de l'email: {}", email);
-
-        boolean exists = userService.emailExists(email);
-        Map<String, Boolean> response = new HashMap<>();
-        response.put("exists", exists);
-
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * Récupère les statistiques des utilisateurs.
+     * Récupère les statistiques des utilisateurs (admin uniquement).
      */
     @GetMapping("/stats")
-    @Operation(summary = "Statistiques des utilisateurs", description = "Récupère les statistiques générales des utilisateurs")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Statistiques des utilisateurs")
     public ResponseEntity<Map<String, Object>> getUserStats() {
         logger.debug("Requête de récupération des statistiques des utilisateurs");
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("total", userService.countUsers());
-
-        // Statistiques par statut
         stats.put("active", userService.countUsersByStatus(UserStatus.ACTIVE));
         stats.put("inactive", userService.countUsersByStatus(UserStatus.INACTIVE));
         stats.put("suspended", userService.countUsersByStatus(UserStatus.SUSPENDED));
         stats.put("pending", userService.countUsersByStatus(UserStatus.PENDING));
-
-        // Statistiques par rôle
         stats.put("clients", userService.countUsersByRole(UserRole.CLIENT));
         stats.put("admins", userService.countUsersByRole(UserRole.ADMIN));
 
@@ -305,10 +294,22 @@ public class UserController {
     }
 
     /**
-     * Health check endpoint spécifique aux utilisateurs.
+     * Profil de l'utilisateur connecté.
+     */
+    @GetMapping("/profile")
+    @Operation(summary = "Profil de l'utilisateur connecté")
+    public ResponseEntity<UserDto> getCurrentUserProfile(Authentication authentication) {
+        logger.debug("Requête de récupération du profil pour l'utilisateur: {}", authentication.getName());
+
+        UserDto user = userService.getUserByEmail(authentication.getName());
+        return ResponseEntity.ok(user);
+    }
+
+    /**
+     * Health check endpoint (public).
      */
     @GetMapping("/health")
-    @Operation(summary = "Health check", description = "Endpoint de vérification de santé du service utilisateurs")
+    @Operation(summary = "Health check")
     public ResponseEntity<Map<String, Object>> healthCheck() {
         logger.debug("Health check du service utilisateurs");
 
@@ -316,9 +317,7 @@ public class UserController {
         health.put("status", "UP");
         health.put("service", "user-api");
         health.put("timestamp", java.time.LocalDateTime.now());
-        health.put("totalUsers", userService.countUsers());
-        health.put("totalClients", userService.countUsersByRole(UserRole.CLIENT));
-        health.put("totalAdmins", userService.countUsersByRole(UserRole.ADMIN));
+        health.put("version", "1.0");
 
         return ResponseEntity.ok(health);
     }
