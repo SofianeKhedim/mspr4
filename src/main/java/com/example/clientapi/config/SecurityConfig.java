@@ -2,7 +2,7 @@ package com.example.clientapi.config;
 
 import com.example.clientapi.security.AuthEntryPointJwt;
 import com.example.clientapi.security.AuthTokenFilter;
-import com.example.clientapi.service.UserDetailsServiceImpl;
+import com.example.clientapi.service.impl.UserDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
