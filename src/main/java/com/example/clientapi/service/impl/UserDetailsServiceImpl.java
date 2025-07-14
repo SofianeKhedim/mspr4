@@ -1,4 +1,4 @@
-package com.example.clientapi.service;
+package com.example.clientapi.service.impl;
 
 import com.example.clientapi.entity.User;
 import com.example.clientapi.repository.UserRepository;

@@ -18,6 +18,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
 
 /**
  * Configuration de sécurité pour l'application.
@@ -58,31 +59,45 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http.cors(cors -> cors.and())
+        http
+                // CORRIGÉ : Configuration CORS sans .and() deprecated
+                .cors(cors -> cors.configurationSource(request -> {
+                    CorsConfiguration corsConfig = new CorsConfiguration();
+                    corsConfig.setAllowedOriginPatterns(java.util.List.of("*"));
+                    corsConfig.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+                    corsConfig.setAllowedHeaders(java.util.List.of("*"));
+                    corsConfig.setAllowCredentials(true);
+                    corsConfig.setMaxAge(3600L);
+                    return corsConfig;
+                }))
                 .csrf(AbstractHttpConfigurer::disable)
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Endpoints publics
+                        // Endpoints publics d'authentification
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/users/health").permitAll()
 
                         // Documentation Swagger
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
 
-                        // Actuator (monitoring)
+                        // Actuator (monitoring) - accessible sans auth en dev
                         .requestMatchers("/actuator/**").permitAll()
+
+                        // AJOUT : Endpoints clients (votre API principale)
+                        .requestMatchers("/api/v1/clients/**").hasAnyRole("CLIENT", "ADMIN")
 
                         // Endpoints admin uniquement
                         .requestMatchers("/api/v1/users/admins/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/users/*/role/**").hasRole("ADMIN")
                         .requestMatchers("/api/v1/users/stats").hasRole("ADMIN")
 
-                        // Endpoints clients et admins
+                        // Endpoints clients et admins (users)
                         .requestMatchers("/api/v1/users/clients/**").hasAnyRole("CLIENT", "ADMIN")
 
                         // Tous les autres endpoints nécessitent une authentification
                         .anyRequest().authenticated()
+                        // .anyRequest().permitAll()
                 );
 
         http.authenticationProvider(authenticationProvider());
