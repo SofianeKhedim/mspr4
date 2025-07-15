@@ -5,6 +5,7 @@ services:
     image: postgres:15-alpine
     container_name: client-api-postgres
     environment:
+      SPRING_PROFILES_ACTIVE: prod
       POSTGRES_DB: ${DB_NAME:-payetonkawa_clients}
       POSTGRES_USER: ${DB_USERNAME:-payetonkawa_user}
       POSTGRES_PASSWORD: ${DB_PASSWORD}

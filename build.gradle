@@ -88,7 +88,8 @@ dependencies {
     // HTTP client mocking for external API testing
     testImplementation 'com.squareup.okhttp3:mockwebserver'
 
-    // implementation 'io.micrometer:micrometer-registry-prometheus'
+    // 
+    implementation 'io.micrometer:micrometer-registry-prometheus'
 
 }
 

@@ -4,17 +4,20 @@ import com.example.clientapi.dto.auth.AdminRegisterRequest;
 import com.example.clientapi.dto.auth.AuthResponse;
 import com.example.clientapi.dto.auth.LoginRequest;
 import com.example.clientapi.dto.auth.RegisterRequest;
+import com.example.clientapi.security.JwtUtils;
 import com.example.clientapi.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -32,6 +35,9 @@ public class AuthController {
 
     @Autowired
     private AuthService authService;
+
+    @Autowired
+    private JwtUtils jwtUtils;
 
     /**
      * Connexion utilisateur.
@@ -94,6 +100,61 @@ public class AuthController {
     }
 
     /**
+     * Déconnexion utilisateur.
+     */
+    @PostMapping("/logout")
+    @Operation(summary = "Déconnexion utilisateur", 
+            description = "Déconnecte un utilisateur en révoquant son token JWT")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Déconnexion réussie"),
+            @ApiResponse(responseCode = "400", description = "Token manquant ou invalide"),
+            @ApiResponse(responseCode = "401", description = "Token non autorisé")
+    })
+    public ResponseEntity<Map<String, String>> logoutUser(HttpServletRequest request) {
+        String token = parseJwtFromRequest(request);
+        
+        if (token == null) {
+            logger.warn("Tentative de déconnexion sans token JWT");
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Token JWT manquant");
+            errorResponse.put("message", "Un token d'authentification valide est requis pour la déconnexion");
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+
+        try {
+            // Vérifier que le token est valide avant de le révoquer
+            if (!jwtUtils.validateJwtToken(token)) {
+                logger.warn("Tentative de déconnexion avec un token invalide");
+                Map<String, String> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Token invalide");
+                errorResponse.put("message", "Le token fourni n'est pas valide");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+
+            // Extraire le nom d'utilisateur pour le log
+            String username = jwtUtils.getUserNameFromJwtToken(token);
+            
+            // Révoquer le token
+            jwtUtils.revokeToken(token);
+            
+            logger.info("Déconnexion réussie pour l'utilisateur: {}", username);
+            
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Déconnexion réussie");
+            response.put("status", "success");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.error("Erreur lors de la déconnexion", e);
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Erreur de déconnexion");
+            errorResponse.put("message", "Une erreur s'est produite lors de la déconnexion");
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+    }
+
+    /**
      * Vérification de la disponibilité d'un email.
      */
     @GetMapping("/check-email/{email}")
@@ -108,5 +169,61 @@ public class AuthController {
         response.put("exists", exists);
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Vérification du statut du token.
+     */
+    @GetMapping("/verify-token")
+    @Operation(summary = "Vérifier la validité d'un token",
+            description = "Vérifie si le token JWT actuel est valide et non révoqué")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Token valide"),
+            @ApiResponse(responseCode = "401", description = "Token invalide ou révoqué")
+    })
+    public ResponseEntity<Map<String, Object>> verifyToken(HttpServletRequest request) {
+        String token = parseJwtFromRequest(request);
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        if (token == null) {
+            response.put("valid", false);
+            response.put("message", "Token manquant");
+            return ResponseEntity.ok(response);
+        }
+
+        try {
+            boolean isValid = jwtUtils.validateJwtToken(token);
+            
+            if (isValid) {
+                String username = jwtUtils.getUserNameFromJwtToken(token);
+                response.put("valid", true);
+                response.put("username", username);
+                response.put("message", "Token valide");
+            } else {
+                response.put("valid", false);
+                response.put("message", "Token invalide ou révoqué");
+            }
+            
+        } catch (Exception e) {
+            logger.error("Erreur lors de la vérification du token", e);
+            response.put("valid", false);
+            response.put("message", "Erreur de validation");
+        }
+        
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Extrait le token JWT de la requête HTTP.
+     */
+    private String parseJwtFromRequest(HttpServletRequest request) {
+        String headerAuth = request.getHeader("Authorization");
+        
+        if (StringUtils.hasText(headerAuth) && headerAuth.startsWith("Bearer ")) {
+            return headerAuth.substring(7);
+        }
+        
+        return null;
     }
 }

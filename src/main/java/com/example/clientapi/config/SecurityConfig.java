@@ -95,6 +95,9 @@ public class SecurityConfig {
                         // Endpoints clients et admins (users)
                         .requestMatchers("/api/v1/users/clients/**").hasAnyRole("CLIENT", "ADMIN")
 
+                        // Déconnexion (nécessite authentication)
+                        .requestMatchers("/api/v1/auth/logout").authenticated()
+
                         // Tous les autres endpoints nécessitent une authentification
                         .anyRequest().authenticated()
                         // .anyRequest().permitAll()
