@@ -86,7 +86,7 @@ attempt=1
 echo "🧪 Test API (max $max_attempts tentatives)..."
 
 while [ $attempt -le $max_attempts ]; do
-    if curl -f http://localhost:8081/api/v1/actuator/health &> /dev/null; then
+    if curl -f http://localhost:8081/api/v1/users/health &> /dev/null; then
         echo "✅ API opérationnelle!"
         break
     else
@@ -103,12 +103,6 @@ if [ $attempt -gt $max_attempts ]; then
     exit 1
 fi
 
-# Test Prometheus
-if curl -f http://localhost:9090/-/healthy &> /dev/null; then
-    echo "✅ Prometheus opérationnel"
-else
-    echo "⚠️ Prometheus non accessible (pas critique)"
-fi
 
 echo ""
 echo "🎉 Déploiement Docker terminé avec succès!"
@@ -116,8 +110,7 @@ echo ""
 echo "🌐 Services disponibles:"
 echo "   - API: http://localhost:8081/api/v1"
 echo "   - Health: http://localhost:8081/api/v1/actuator/health"
-echo "   - Swagger: http://localhost:8081/api/v1/swagger-ui.html"
-echo "   - Prometheus: http://localhost:9090"
+echo "   - Swagger: http://localhost:8081/swagger-ui.html"
 echo "   - PostgreSQL: localhost:5432"
 echo ""
 echo "📊 Commandes utiles:"

@@ -24,13 +24,6 @@ else
     echo "⚠️ Info endpoint non accessible"
 fi
 
-# Test 3: Prometheus metrics
-echo "📈 Test métriques Prometheus..."
-if curl -f "$API_URL/actuator/prometheus" &> /dev/null; then
-    echo "✅ Métriques Prometheus OK"
-else
-    echo "⚠️ Métriques Prometheus non accessibles"
-fi
 
 # Test 4: Swagger UI
 echo "📚 Test Swagger UI..."
@@ -50,6 +43,5 @@ echo ""
 echo "🌐 URLs de test:"
 echo "   - Health: $API_URL/actuator/health"
 echo "   - Info: $API_URL/actuator/info"
-echo "   - Metrics: $API_URL/actuator/prometheus"
 echo "   - Swagger: $API_URL/swagger-ui.html"
 

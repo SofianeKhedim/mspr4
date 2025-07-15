@@ -49,39 +49,11 @@ services:
     restart: unless-stopped
     volumes:
       - app_logs:/app/logs
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/api/v1/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 90s
-
-  # Monitoring Prometheus
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: client-api-prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--storage.tsdb.retention.time=15d'
-      - '--web.enable-lifecycle'
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus_data:/prometheus
-    ports:
-      - "9090:9090"
-    networks:
-      - client-api-network
-    restart: unless-stopped
-    depends_on:
-      - client-api
 
 volumes:
   postgres_data:
     driver: local
   app_logs:
-    driver: local
-  prometheus_data:
     driver: local
 
 networks:

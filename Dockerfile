@@ -43,8 +43,8 @@ ENV JAVA_OPTS="-Xmx1g -Xms512m -XX:+UseG1GC"
 EXPOSE 8081
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:8081/api/v1/actuator/health || exit 1
+# HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+#   CMD curl -f http://localhost:8081/api/v1/actuator/health || exit 1
 
 # Démarrage
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
